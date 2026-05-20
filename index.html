@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>고객지원파트 지표 대시보드</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'SF Pro Text',system-ui,-apple-system,sans-serif;background:#f5f5f7;color:#1d1d1f;-webkit-font-smoothing:antialiased}
+header{background:#000;padding:12px clamp(12px,2vw,24px);display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px}
+header h1{font-family:'SF Pro Display',system-ui,-apple-system,sans-serif;font-size:clamp(13px,1.5vw,16px);font-weight:600;color:#fff;letter-spacing:-.374px;white-space:nowrap}
+header p{font-size:11px;color:rgba(255,255,255,.45)}
+.upload-area{margin-left:auto;display:flex;align-items:center;gap:8px}
+.upload-area label{font-size:11px;color:rgba(255,255,255,.6);cursor:pointer;display:flex;align-items:center;gap:5px}
+.upload-area label:hover{color:#fff}
+#csv-input{display:none}
+.upload-btn{padding:5px 12px;border-radius:11px;border:1px solid rgba(255,255,255,.25);background:transparent;color:#fff;font-size:11px;cursor:pointer;transition:.15s}
+.upload-btn:hover{background:rgba(255,255,255,.1)}
+#upload-status{font-size:11px;color:rgba(255,255,255,.5)}
+.outer{width:100%;max-width:1800px;margin:0 auto;padding:clamp(10px,1.2vw,16px) clamp(10px,1.5vw,20px)}
+.tab-bar{display:flex;gap:5px;padding:4px;background:#e5e5ea;border-radius:10px;width:fit-content;margin-bottom:clamp(10px,1.5vw,16px)}
+.tab{padding:6px clamp(12px,2.5vw,20px);border-radius:8px;border:none;background:transparent;font-family:inherit;font-size:13px;font-weight:500;color:#7a7a7a;cursor:pointer;transition:.15s;white-space:nowrap}
+.tab.on{background:#fff;color:#1d1d1f;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.tab:active{transform:scale(.97)}
+.card{background:#fff;border-radius:18px;border:1px solid #e0e0e0;padding:clamp(14px,1.5vw,20px) clamp(14px,1.5vw,22px)}
+.row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:clamp(10px,1.5vw,16px)}
+.ttl{font-size:clamp(11px,1.2vw,13px);font-weight:600;color:#1d1d1f;letter-spacing:-.224px}
+.tg{display:flex;gap:5px;flex-wrap:wrap}
+.btn{padding:5px 11px;border-radius:11px;border:1px solid #e0e0e0;background:#fafafc;cursor:pointer;font-family:inherit;font-size:11px;color:#1d1d1f;letter-spacing:-.12px;transition:.15s;white-space:nowrap}
+.btn:hover{background:#ebebf0}
+.btn.on{background:#0066cc;border-color:#0066cc;color:#fff}
+.btn:active{transform:scale(.95)}
+.layout{display:flex;gap:14px;align-items:stretch}
+.sidebar-col{width:clamp(240px,24%,380px);flex-shrink:0;display:flex;flex-direction:column}
+.card-side{flex:1;display:flex;flex-direction:column;padding:clamp(14px,1.5vw,20px) clamp(12px,1.5vw,18px)}
+.card-side .cw{flex:1;min-height:clamp(300px,42vh,520px)}
+.main-col{flex:1;min-width:0;display:flex;flex-direction:column;gap:14px}
+.main-col .cw{height:clamp(300px,40vh,500px)}
+.kpi-main-bar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.sub-bar{display:none;flex-wrap:wrap;gap:5px;padding:7px 10px;background:#ebebf0;border-radius:11px;margin-bottom:12px}
+.sub-bar.open{display:flex}
+.k-sec{margin-bottom:clamp(14px,1.8vw,22px)}
+.k-sec-ttl{font-size:11px;font-weight:600;color:#7a7a7a;letter-spacing:.4px;text-transform:uppercase;margin-bottom:9px}
+.k-row{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px}
+.k-row:last-child{margin-bottom:0}
+.kcard{background:#fff;border:1px solid #e0e0e0;border-radius:18px;padding:clamp(12px,1.5vw,18px);flex:1 1 160px;min-width:140px;max-width:380px}
+.kc-period{font-size:11px;color:#7a7a7a;margin-bottom:5px}
+.kc-name{font-size:12px;color:#7a7a7a;margin-bottom:7px}
+.kc-val{font-size:clamp(20px,2.5vw,26px);font-weight:600;color:#1d1d1f;letter-spacing:-.5px;line-height:1.1}
+.kc-delta{font-size:11px;margin-top:5px;min-height:15px}
+.kpair{display:flex;border:1px solid #e0e0e0;border-radius:18px;overflow:hidden;flex:2 1 340px;min-width:300px}
+.kpair.full{flex:1 1 100%;min-width:0}
+.kpair .kcard{flex:1;border:none;border-radius:0;border-right:1px solid #f0f0f0;max-width:none;min-width:120px}
+.kpair .kcard:last-child{border-right:none}
+/* 상태 오버레이 */
+#state-overlay{position:fixed;inset:0;background:#f5f5f7;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px}
+#state-overlay h2{font-size:20px;font-weight:600;color:#1d1d1f}
+#state-overlay p{font-size:14px;color:#7a7a7a}
+.upload-cta{padding:12px 24px;background:#0066cc;color:#fff;border:none;border-radius:20px;font-size:14px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:8px}
+.upload-cta:hover{background:#0071e3}
+@media(max-width:960px){.layout{flex-direction:column}.sidebar-col{width:100%}.card-side .cw{min-height:240px;height:240px;flex:none}.main-col .cw{height:280px}}
+@media(max-width:600px){.kpair{flex-direction:column;flex:1 1 140px;min-width:0}.kpair .kcard{border-right:none;border-bottom:1px solid #f0f0f0;max-width:none}.kpair .kcard:last-child{border-bottom:none}.kcard{max-width:none}}
+</style>
+</head>
+<body>
+
+<!-- 상태 오버레이 (데이터 없음 / 로딩 중) -->
+<div id="state-overlay">
+  <h2 id="state-title">데이터 로딩 중...</h2>
+  <p id="state-desc"></p>
+  <label class="upload-cta" style="display:none" id="cta-upload">
+    <span>📂 CSV 업로드</span>
+    <input type="file" accept=".csv" onchange="handleUploadCTA(this)">
+  </label>
+</div>
+
+<header>
+  <h1>고객지원파트 지표 대시보드</h1>
+  <p id="header-info">로딩 중...</p>
+  <div class="upload-area">
+    <label title="대시보드_데이터.csv 업로드">
+      📂 업데이트
+      <input type="file" id="csv-input" accept=".csv" onchange="handleUpload(this)">
+    </label>
+    <span id="upload-status"></span>
+  </div>
+</header>
+
+<div class="outer" id="main-content" style="display:none">
+<div class="tab-bar">
+  <button class="tab on" onclick="switchTab('charts',this)">그래프</button>
+  <button class="tab"    onclick="switchTab('kpi',this)">KPI 카드</button>
+</div>
+
+<div id="tab-charts">
+<div class="layout">
+  <div class="sidebar-col">
+    <div class="card card-side">
+      <div class="row">
+        <span class="ttl">① 배정건 &mdash; 완료 / 진행 중</span>
+        <div class="tg" id="t1">
+          <button class="btn on" onclick="sv(1,'monthly',this)">월별</button>
+          <button class="btn"    onclick="sv(1,'weekly',this)">8주</button>
+          <button class="btn"    onclick="sv(1,'daily',this)">14일</button>
+        </div>
+      </div>
+      <div class="cw"><canvas id="c1"></canvas></div>
+    </div>
+  </div>
+  <div class="main-col">
+    <div class="card">
+      <div class="row">
+        <span class="ttl">② 성공 / 종결 비중 추이</span>
+        <div class="tg" id="t2">
+          <button class="btn on" onclick="sv(2,'monthly',this)">전체 월별</button>
+          <button class="btn"    onclick="sv(2,'weekly',this)">최근 8주</button>
+          <button class="btn"    onclick="sv(2,'daily',this)">최근 14일</button>
+        </div>
+      </div>
+      <div class="cw"><canvas id="c2"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="row">
+        <span class="ttl">③ 내재화 접수 건수 / 기여율 추이</span>
+        <div class="tg" id="t3">
+          <button class="btn on" onclick="sv(3,'monthly',this)">전체 월별</button>
+          <button class="btn"    onclick="sv(3,'weekly',this)">최근 8주</button>
+          <button class="btn"    onclick="sv(3,'daily',this)">최근 14일</button>
+        </div>
+      </div>
+      <div class="cw"><canvas id="c3"></canvas></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<div id="tab-kpi" style="display:none">
+  <div class="kpi-main-bar" id="kmb">
+    <button class="btn on" onclick="setTop('3month',this)">최근 3개월</button>
+    <button class="btn"    onclick="setTop('monthly',this)">월별 &#9662;</button>
+    <button class="btn"    onclick="setTop('quarterly',this)">분기별 &#9662;</button>
+  </div>
+  <div id="sub-monthly"   class="sub-bar"></div>
+  <div id="sub-quarterly" class="sub-bar"></div>
+  <div id="kgrid"></div>
+</div>
+</div><!-- /main-content -->
+
+<script>
+/* ── CSV 집계 로직 ── */
+const FLAGS = ['a','b','c','d','e','f','g','h','i','성공','기타','내재화총'];
+const RATES = ['r_kt','r_l2','r_c','r_d','r_e','r_f','r_g','r_h','r_i','r_gr','r_s','r_z'];
+
+function aggGroup(rows) {
+  const n = rows.length;
+  if(!n) return null;
+  const r = {n};
+  FLAGS.forEach(f => { r[f] = rows.reduce((s,row) => s+(parseFloat(row[f])||0), 0); });
+  RATES.forEach(rt => {
+    const vals = rows.map(row => parseFloat(row[rt])).filter(v => !isNaN(v));
+    r[rt] = vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : null;
+  });
+  r['ge'] = r['기타'];
+  return r;
+}
+
+function groupBy(rows, keyFn) {
+  const g = {};
+  rows.forEach(row => { const k=keyFn(row); if(k){(g[k]=g[k]||[]).push(row);} });
+  return g;
+}
+function finalize(groups) {
+  const r = {};
+  Object.keys(groups).sort().forEach(k => { r[k]=aggGroup(groups[k]); });
+  return r;
+}
+
+function addMonths(ym, n) {
+  const [y, m] = ym.split('-').map(Number);
+  const d = new Date(y, m-1+n, 1);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+function fmtM(ym) {
+  const [y,m] = ym.split('-');
+  return `${y.slice(2)}년 ${parseInt(m)}월`;
+}
+function fmtQ(q) { return `${q.slice(2,4)}년 ${q.slice(-1)}Q`; }
+
+function processCSV(text) {
+  const rows = Papa.parse(text, {header:true, skipEmptyLines:true}).data;
+
+  const allDates = rows.map(r=>r['배정일']).filter(Boolean).sort();
+  const refDate  = allDates[allDates.length-1];
+  const refD     = new Date(refDate);
+  const w8ago    = new Date(refD); w8ago.setDate(refD.getDate()-56);
+  const d14ago   = new Date(refD); d14ago.setDate(refD.getDate()-14);
+
+  const chart = {
+    monthly: finalize(groupBy(rows, r=>r['_m'])),
+    weekly:  finalize(groupBy(rows.filter(r=>new Date(r['배정일'])>w8ago), r=>r['_w'])),
+    daily:   finalize(groupBy(rows.filter(r=>new Date(r['배정일'])>d14ago), r=>r['배정일'])),
+  };
+
+  /* KPI */
+  const months   = [...new Set(rows.map(r=>r['_m']).filter(Boolean))].sort();
+  const quarters = [...new Set(rows.map(r=>r['_q']).filter(Boolean))].sort();
+  const refM     = months[months.length-1];
+  const c3s      = addMonths(refM,-2);
+  const p3s      = addMonths(refM,-5);
+  const p3e      = addMonths(refM,-3);
+  const c3lbl    = c3s.slice(0,4)===refM.slice(0,4)
+                   ? `${fmtM(c3s)}~${parseInt(refM.split('-')[1])}월`
+                   : `${fmtM(c3s)}~${fmtM(refM)}`;
+  const p3lbl    = p3s.slice(0,4)===p3e.slice(0,4)
+                   ? `${fmtM(p3s)}~${parseInt(p3e.split('-')[1])}월`
+                   : `${fmtM(p3s)}~${fmtM(p3e)}`;
+
+  const kpiM={}, kpiQ={};
+  months.forEach((m,i) => {
+    kpiM[m]={label:fmtM(m), prev_label:i>0?fmtM(months[i-1]):null,
+             cur:aggGroup(rows.filter(r=>r['_m']===m)),
+             prev:i>0?aggGroup(rows.filter(r=>r['_m']===months[i-1])):null};
+  });
+  quarters.forEach((q,i) => {
+    kpiQ[q]={label:fmtQ(q), prev_label:i>0?fmtQ(quarters[i-1]):null,
+             cur:aggGroup(rows.filter(r=>r['_q']===q)),
+             prev:i>0?aggGroup(rows.filter(r=>r['_q']===quarters[i-1])):null};
+  });
+
+  const kpi={
+    '3month':{label:c3lbl, prev_label:p3lbl,
+              cur:aggGroup(rows.filter(r=>r['_m']>=c3s)),
+              prev:aggGroup(rows.filter(r=>r['_m']>=p3s&&r['_m']<=p3e))},
+    monthly:kpiM, quarterly:kpiQ,
+  };
+
+  return {chart, kpi, refDate, rows:rows.length};
+}
+
+/* ── 전역 데이터 ── */
+let D={}, KPI={};
+
+/* ── 차트 ── */
+const GRID={color:'rgba(0,0,0,.06)'};
+const LEG={position:'top',labels:{boxWidth:11,padding:12,font:{size:11}}};
+const C={
+  c1a:'rgba(0,102,204,.85)',  c1b:'rgba(220,53,69,.6)',
+  c2a:'rgba(0,64,153,.88)',   c2b:'rgba(0,122,255,.45)',
+  c2c:'rgba(255,149,0,.85)',  c2d:'rgba(255,59,48,.85)',  c2e:'rgba(142,142,147,.32)',
+  c3a:'rgba(0,64,153,.9)',    c3b:'rgba(0,102,204,.75)',  c3c:'rgba(0,153,255,.45)',
+  ln:'rgb(255,59,48)',
+};
+const fL=(s,v)=>{
+  if(v==='monthly'){const[y,m]=s.split('-');return y.slice(2)+'.'+m;}
+  if(v==='weekly') return s.replace(/^\d{4}-/,'');
+  return s.slice(5).replace('-','/');
+};
+function makeTip(vd,ks){return{callbacks:{label(ctx){
+  const horiz=ctx.chart.options.indexAxis==='y';
+  const n=horiz?(ctx.parsed.x??0):(ctx.parsed.y??0);
+  const k=ks[ctx.dataIndex]; if(!k) return '';
+  if(ctx.dataset.yAxisID==='y2') return ` ${ctx.dataset.label}: ${n.toFixed(1)}%`;
+  const rk=ctx.dataset._rk;
+  const pct=(rk&&vd[k][rk]!=null)?vd[k][rk]:(vd[k].n>0?n/vd[k].n*100:0);
+  return ` ${ctx.dataset.label}: ${n}건 (${pct.toFixed(1)}%)`;
+}}};}
+function bOpt(tip,sc){return{responsive:true,maintainAspectRatio:false,plugins:{tooltip:tip,legend:LEG},scales:sc};}
+function cfg1(v){const vd=D[v],ks=Object.keys(vd).sort();
+  return{type:'bar',data:{labels:ks.map(k=>fL(k,v)),datasets:[
+    {label:'완료건',      data:ks.map(k=>vd[k].a),backgroundColor:C.c1a,stack:'s'},
+    {label:'추적 진행 중',data:ks.map(k=>vd[k].b),backgroundColor:C.c1b,stack:'s'},
+  ]},options:{...bOpt(makeTip(vd,ks),{x:{stacked:true,grid:GRID,title:{display:true,text:'건수',font:{size:11}}},y:{stacked:true,grid:{display:false}}}),indexAxis:'y'}};}
+function cfg2(v){const vd=D[v],ks=Object.keys(vd).sort();
+  return{type:'bar',data:{labels:ks.map(k=>fL(k,v)),datasets:[
+    {label:'컨택후성공 · 신청유도',   data:ks.map(k=>vd[k].c), backgroundColor:C.c2a,stack:'s',_rk:'r_c'},
+    {label:'컨택후성공 · 신청후작성', data:ks.map(k=>vd[k].d), backgroundColor:C.c2b,stack:'s',_rk:'r_d'},
+    {label:'종결 · 부재종결',         data:ks.map(k=>vd[k].e), backgroundColor:C.c2c,stack:'s',_rk:'r_e'},
+    {label:'종결 · 신청취소',         data:ks.map(k=>vd[k].f), backgroundColor:C.c2d,stack:'s',_rk:'r_f'},
+    {label:'기타',                    data:ks.map(k=>vd[k].ge),backgroundColor:C.c2e,stack:'s'},
+  ]},options:bOpt(makeTip(vd,ks),{x:{stacked:true,grid:GRID},y:{stacked:true,grid:GRID,title:{display:true,text:'건수',font:{size:11}}}});}
+}
+function cfg3(v){const vd=D[v],ks=Object.keys(vd).sort();
+  return{type:'bar',data:{labels:ks.map(k=>fL(k,v)),datasets:[
+    {label:'신청유도 접수',   data:ks.map(k=>vd[k].g),      backgroundColor:C.c3a,stack:'s',yAxisID:'y1',_rk:'r_g'},
+    {label:'로직2 접수',     data:ks.map(k=>vd[k].h),      backgroundColor:C.c3b,stack:'s',yAxisID:'y1',_rk:'r_h'},
+    {label:'신청후작성 접수', data:ks.map(k=>vd[k].i),      backgroundColor:C.c3c,stack:'s',yAxisID:'y1',_rk:'r_i'},
+    {label:'내재화 기여율(%)',data:ks.map(k=>vd[k].r_gr??0),type:'line',yAxisID:'y2',
+     borderColor:C.ln,backgroundColor:'transparent',borderWidth:2,pointRadius:4,pointBackgroundColor:C.ln,tension:.3},
+  ]},options:bOpt(makeTip(vd,ks),{x:{stacked:true,grid:GRID},y1:{stacked:true,position:'left',grid:GRID,title:{display:true,text:'건수',font:{size:11}}},y2:{position:'right',grid:{drawOnChartArea:false},title:{display:true,text:'기여율(%)',font:{size:11}},min:0,max:100}});}
+}
+const CH={},BLD={1:cfg1,2:cfg2,3:cfg3};
+function initCharts(){[1,2,3].forEach(n=>{if(CH[n]){CH[n].destroy();}CH[n]=new Chart(document.getElementById('c'+n),BLD[n]('monthly'));});}
+function sv(n,v,btn){btn.closest('.tg').querySelectorAll('.btn').forEach(b=>b.classList.remove('on'));btn.classList.add('on');CH[n].destroy();CH[n]=new Chart(document.getElementById('c'+n),BLD[n](v));}
+function switchTab(name,btn){document.querySelectorAll('.tab').forEach(b=>b.classList.remove('on'));btn.classList.add('on');document.getElementById('tab-charts').style.display=name==='charts'?'':'none';document.getElementById('tab-kpi').style.display=name==='kpi'?'':'none';}
+
+/* ── KPI ── */
+const SECS=[
+  {title:'배정 현황',rows:[[{label:'총 배정건',key:'n',type:'cnt',hib:true},{label:'완료건',key:'a',type:'cnt',hib:true},{label:'추적 진행 중',key:'b',type:'cnt',hib:null}]]},
+  {title:'컨택',rows:[[{label:'컨택 완료율',key:'r_kt',type:'rate',hib:true},{label:'로직2 유도 성공률',key:'r_l2',type:'rate',hib:true}]]},
+  {title:'내재화 접수',rows:[
+    [{pair:[{label:'접수건 (통합)',key:'내재화총',type:'cnt',hib:true},{label:'기여율 (통합)',key:'r_gr',type:'rate',hib:true}]},{pair:[{label:'• 로직2 접수건',key:'h',type:'cnt',hib:true},{label:'• 로직2 기여율',key:'r_h',type:'rate',hib:true}]}],
+    [{pair:[{label:'• 신청유도 접수건',key:'g',type:'cnt',hib:true},{label:'• 신청유도 기여율',key:'r_g',type:'rate',hib:true}]},{pair:[{label:'• 신청후작성 접수건',key:'i',type:'cnt',hib:true},{label:'• 신청후작성 기여율',key:'r_i',type:'rate',hib:true}]}],
+  ]},
+  {title:'컨택 후 성공',rows:[
+    [{pair:[{label:'성공건 (통합)',key:'성공',type:'cnt',hib:true},{label:'성공률 (통합)',key:'r_s',type:'rate',hib:true}],full:true}],
+    [{pair:[{label:'• 신청유도 성공건',key:'c',type:'cnt',hib:true},{label:'• 신청유도 성공률',key:'r_c',type:'rate',hib:true}]},{pair:[{label:'• 신청후작성 성공건',key:'d',type:'cnt',hib:true},{label:'• 신청후작성 성공률',key:'r_d',type:'rate',hib:true}]}],
+  ]},
+  {title:'취소',rows:[
+    [{label:'취소율 (통합)',key:'r_z',type:'rate',hib:false}],
+    [{label:'• 부재 종결율',key:'r_e',type:'rate',hib:false},{label:'• 신청 취소율',key:'r_f',type:'rate',hib:false}],
+  ]},
+];
+function fmt(v,t){if(v==null)return '—';return t==='cnt'?v.toLocaleString()+'건':v.toFixed(1)+'%';}
+function fmtDelta(cur,prv,type,hib,prevLbl){
+  if(cur==null||prv==null)return '<span style="color:#c7c7cc">이전 기간 없음</span>';
+  const diff=cur-prv;
+  if(Math.abs(diff)<(type==='rate'?.05:.5))return '<span style="color:#c7c7cc">—</span>';
+  const arrow=diff>0?'↑':'↓';
+  const good=hib==null?null:(hib?diff>0:diff<0);
+  const col=good==null?'#8e8e93':(good?'#34c759':'#ff3b30');
+  const txt=type==='cnt'?`${arrow}${Math.abs(diff).toLocaleString()}건 (${Math.abs(diff/prv*100).toFixed(1)}%)`:`${arrow}${Math.abs(diff).toFixed(1)}%p`;
+  const vs=prevLbl?`<span style="color:#c7c7cc;font-size:10px"> vs ${prevLbl}</span>`:'';
+  return `<span style="color:${col}">${txt}</span>${vs}`;
+}
+function makeCard(def,kd){const cv=kd.cur?kd.cur[def.key]:null,pv=kd.prev?kd.prev[def.key]:null;const el=document.createElement('div');el.className='kcard';el.innerHTML=`<div class="kc-period">${kd.label}</div><div class="kc-name">${def.label}</div><div class="kc-val">${fmt(cv,def.type)}</div><div class="kc-delta">${fmtDelta(cv,pv,def.type,def.hib,kd.prev_label)}</div>`;return el;}
+function renderKPI(kd){if(!kd)return;const grid=document.getElementById('kgrid');grid.innerHTML='';SECS.forEach(sec=>{const sEl=document.createElement('div');sEl.className='k-sec';const tEl=document.createElement('div');tEl.className='k-sec-ttl';tEl.textContent=sec.title;sEl.appendChild(tEl);sec.rows.forEach(row=>{const rEl=document.createElement('div');rEl.className='k-row';row.forEach(item=>{if(item.pair){const pEl=document.createElement('div');pEl.className='kpair'+(item.full?' full':'');item.pair.forEach(d=>pEl.appendChild(makeCard(d,kd)));rEl.appendChild(pEl);}else{rEl.appendChild(makeCard(item,kd));}});sEl.appendChild(rEl);});grid.appendChild(sEl);});}
+function buildSubBars(){const mb=document.getElementById('sub-monthly');Object.keys(KPI.monthly||{}).sort().forEach(k=>{const b=document.createElement('button');b.className='btn';b.textContent=KPI.monthly[k].label;b.onclick=function(){mb.querySelectorAll('.btn').forEach(x=>x.classList.remove('on'));b.classList.add('on');renderKPI(KPI.monthly[k]);};mb.appendChild(b);});const qb=document.getElementById('sub-quarterly');Object.keys(KPI.quarterly||{}).sort().forEach(k=>{const b=document.createElement('button');b.className='btn';b.textContent=KPI.quarterly[k].label;b.onclick=function(){qb.querySelectorAll('.btn').forEach(x=>x.classList.remove('on'));b.classList.add('on');renderKPI(KPI.quarterly[k]);};qb.appendChild(b);});}
+function setTop(type,btn){document.querySelectorAll('#kmb .btn').forEach(b=>b.classList.remove('on'));btn.classList.add('on');document.getElementById('sub-monthly').classList.toggle('open',type==='monthly');document.getElementById('sub-quarterly').classList.toggle('open',type==='quarterly');if(type==='3month'){renderKPI(KPI['3month']);}else{const first=document.querySelector(`#sub-${type} .btn`);if(first)first.click();}}
+
+/* ── 데이터 초기화 ── */
+function applyData(result) {
+  D   = result.chart;
+  KPI = result.kpi;
+  document.getElementById('state-overlay').style.display = 'none';
+  document.getElementById('main-content').style.display = '';
+  document.getElementById('header-info').textContent =
+    `기준일: ${result.refDate} · ${result.rows.toLocaleString()}건 · 토스 전수조사 제외`;
+  initCharts();
+  document.getElementById('sub-monthly').innerHTML   = '';
+  document.getElementById('sub-quarterly').innerHTML = '';
+  buildSubBars();
+  renderKPI(KPI['3month']);
+}
+
+/* ── 데이터 로드 ── */
+async function loadData() {
+  try {
+    const res = await fetch('/api/data?t=' + Date.now());
+    if (res.status === 404) {
+      document.getElementById('state-title').textContent = '업로드된 데이터가 없습니다';
+      document.getElementById('state-desc').textContent  = '대시보드_데이터.csv 를 업로드해주세요';
+      document.getElementById('cta-upload').style.display = 'flex';
+      return;
+    }
+    const text = await res.text();
+    applyData(processCSV(text));
+  } catch(e) {
+    document.getElementById('state-title').textContent = '로드 실패';
+    document.getElementById('state-desc').textContent  = e.message;
+    document.getElementById('cta-upload').style.display = 'flex';
+  }
+}
+
+/* ── 업로드 처리 ── */
+async function doUpload(file) {
+  if (!file) return;
+  const statusEl = document.getElementById('upload-status');
+  statusEl.textContent = '업로드 중...';
+  try {
+    const res = await fetch('/api/upload', {
+      method: 'POST',
+      headers: {'Content-Type': 'text/csv'},
+      body: file,
+    });
+    if (!res.ok) throw new Error('서버 오류 ' + res.status);
+    statusEl.textContent = '✓ 완료';
+    setTimeout(() => { statusEl.textContent=''; }, 3000);
+    // 업로드 성공 후 데이터 재로드
+    const text = await file.text();
+    applyData(processCSV(text));
+  } catch(e) {
+    statusEl.textContent = '실패: ' + e.message;
+  }
+}
+function handleUpload(input)     { doUpload(input.files[0]); input.value=''; }
+function handleUploadCTA(input)  { doUpload(input.files[0]); }
+
+loadData();
+</script>
+</body>
+</html>
