@@ -279,7 +279,7 @@ function cfg2(v){const vd=D[v],ks=Object.keys(vd).sort();
     {label:'종결 · 부재종결',         data:ks.map(k=>vd[k].e), backgroundColor:C.c2c,stack:'s',_rk:'r_e'},
     {label:'종결 · 신청취소',         data:ks.map(k=>vd[k].f), backgroundColor:C.c2d,stack:'s',_rk:'r_f'},
     {label:'기타',                    data:ks.map(k=>vd[k].ge),backgroundColor:C.c2e,stack:'s'},
-  ]},options:bOpt(makeTip(vd,ks),{x:{stacked:true,grid:GRID},y:{stacked:true,grid:GRID,title:{display:true,text:'건수',font:{size:11}}}});}
+  ]},options:bOpt(makeTip(vd,ks),{x:{stacked:true,grid:GRID},y:{stacked:true,grid:GRID,title:{display:true,text:'건수',font:{size:11}}}})};
 }
 function cfg3(v){const vd=D[v],ks=Object.keys(vd).sort();
   return{type:'bar',data:{labels:ks.map(k=>fL(k,v)),datasets:[
@@ -288,7 +288,7 @@ function cfg3(v){const vd=D[v],ks=Object.keys(vd).sort();
     {label:'신청후작성 접수', data:ks.map(k=>vd[k].i),      backgroundColor:C.c3c,stack:'s',yAxisID:'y1',_rk:'r_i'},
     {label:'내재화 기여율(%)',data:ks.map(k=>vd[k].r_gr??0),type:'line',yAxisID:'y2',
      borderColor:C.ln,backgroundColor:'transparent',borderWidth:2,pointRadius:4,pointBackgroundColor:C.ln,tension:.3},
-  ]},options:bOpt(makeTip(vd,ks),{x:{stacked:true,grid:GRID},y1:{stacked:true,position:'left',grid:GRID,title:{display:true,text:'건수',font:{size:11}}},y2:{position:'right',grid:{drawOnChartArea:false},title:{display:true,text:'기여율(%)',font:{size:11}},min:0,max:100}});}
+  ]},options:bOpt(makeTip(vd,ks),{x:{stacked:true,grid:GRID},y1:{stacked:true,position:'left',grid:GRID,title:{display:true,text:'건수',font:{size:11}}},y2:{position:'right',grid:{drawOnChartArea:false},title:{display:true,text:'기여율(%)',font:{size:11}},min:0,max:100}})};
 }
 const CH={},BLD={1:cfg1,2:cfg2,3:cfg3};
 function initCharts(){[1,2,3].forEach(n=>{if(CH[n]){CH[n].destroy();}CH[n]=new Chart(document.getElementById('c'+n),BLD[n]('monthly'));});}
