@@ -104,7 +104,7 @@ header p{font-size:11px;color:rgba(255,255,255,.45)}
         <div class="tg" id="t1">
           <button class="btn on" onclick="sv(1,'monthly',this)">월별</button>
           <button class="btn"    onclick="sv(1,'weekly',this)">8주</button>
-          <button class="btn"    onclick="sv(1,'daily',this)">14일</button>
+          <button class="btn"    onclick="sv(1,'daily',this)">10영업일</button>
         </div>
       </div>
       <div class="cw"><canvas id="c1"></canvas></div>
@@ -117,7 +117,7 @@ header p{font-size:11px;color:rgba(255,255,255,.45)}
         <div class="tg" id="t2">
           <button class="btn on" onclick="sv(2,'monthly',this)">전체 월별</button>
           <button class="btn"    onclick="sv(2,'weekly',this)">최근 8주</button>
-          <button class="btn"    onclick="sv(2,'daily',this)">최근 14일</button>
+          <button class="btn"    onclick="sv(2,'daily',this)">최근 10영업일</button>
         </div>
       </div>
       <div class="cw"><canvas id="c2"></canvas></div>
@@ -128,7 +128,7 @@ header p{font-size:11px;color:rgba(255,255,255,.45)}
         <div class="tg" id="t3">
           <button class="btn on" onclick="sv(3,'monthly',this)">전체 월별</button>
           <button class="btn"    onclick="sv(3,'weekly',this)">최근 8주</button>
-          <button class="btn"    onclick="sv(3,'daily',this)">최근 14일</button>
+          <button class="btn"    onclick="sv(3,'daily',this)">최근 10영업일</button>
         </div>
       </div>
       <div class="cw"><canvas id="c3"></canvas></div>
@@ -194,14 +194,15 @@ function processCSV(text) {
 
   const allDates = rows.map(r=>r['배정일']).filter(Boolean).sort();
   const refDate  = allDates[allDates.length-1];
-  const refD     = new Date(refDate);
-  const w8ago    = new Date(refD); w8ago.setDate(refD.getDate()-56);
-  const d14ago   = new Date(refD); d14ago.setDate(refD.getDate()-14);
+
+  const allWeeks = [...new Set(rows.map(r=>r['_w']).filter(Boolean))].sort();
+  const last8w   = new Set(allWeeks.slice(-8));
+  const last10d  = new Set(allDates.slice(-10));
 
   const chart = {
     monthly: finalize(groupBy(rows, r=>r['_m'])),
-    weekly:  finalize(groupBy(rows.filter(r=>new Date(r['배정일'])>w8ago), r=>r['_w'])),
-    daily:   finalize(groupBy(rows.filter(r=>new Date(r['배정일'])>d14ago), r=>r['배정일'])),
+    weekly:  finalize(groupBy(rows.filter(r=>last8w.has(r['_w'])), r=>r['_w'])),
+    daily:   finalize(groupBy(rows.filter(r=>last10d.has(r['배정일'])), r=>r['배정일'])),
   };
 
   /* KPI */
