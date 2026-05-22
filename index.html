@@ -192,8 +192,8 @@ function fmtQ(q) { return `${q.slice(2,4)}년 ${q.slice(-1)}Q`; }
 function processCSV(text) {
   const rows = Papa.parse(text, {header:true, skipEmptyLines:true}).data;
 
-  const allDates = rows.map(r=>r['배정일']).filter(Boolean).sort();
-  const refDate  = allDates[allDates.length-1];
+  const allDates  = [...new Set(rows.map(r=>r['배정일']).filter(Boolean))].sort();
+  const refDate   = allDates[allDates.length-1];
 
   const allWeeks = [...new Set(rows.map(r=>r['_w']).filter(Boolean))].sort();
   const last8w   = new Set(allWeeks.slice(-8));
