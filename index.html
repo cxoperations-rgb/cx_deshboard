@@ -80,6 +80,7 @@ header p{font-size:11px;color:rgba(255,255,255,.45)}
   <h1>고객지원파트 지표 대시보드</h1>
   <p id="header-info">로딩 중...</p>
   <div class="upload-area">
+    <span id="last-updated" style="font-size:11px;color:rgba(255,255,255,.45)"></span>
     <label title="대시보드_데이터.csv 업로드">
       📂 업데이트
       <input type="file" id="csv-input" accept=".csv" onchange="handleUpload(this)">
@@ -236,7 +237,8 @@ function processCSV(text) {
     monthly:kpiM, quarterly:kpiQ,
   };
 
-  return {chart, kpi, refDate, rows:rows.length};
+  const updated = rows.length ? (rows[0]['_updated'] || '') : '';
+  return {chart, kpi, refDate, updated, rows:rows.length};
 }
 
 /* ── 전역 데이터 ── */
@@ -336,7 +338,10 @@ function applyData(result) {
   document.getElementById('state-overlay').style.display = 'none';
   document.getElementById('main-content').style.display = '';
   document.getElementById('header-info').textContent =
-    `기준일: ${result.refDate} · ${result.rows.toLocaleString()}건 · 토스 전수조사 제외`;
+    `배정일 최종: ${result.refDate} · ${result.rows.toLocaleString()}건 · 토스 전수조사 제외`;
+  if (result.updated) {
+    document.getElementById('last-updated').textContent = `최종 업데이트: ${result.updated}`;
+  }
   initCharts();
   document.getElementById('sub-monthly').innerHTML   = '';
   document.getElementById('sub-quarterly').innerHTML = '';
