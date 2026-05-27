@@ -81,10 +81,11 @@ header p{font-size:11px;color:rgba(255,255,255,.45)}
   <p id="header-info">로딩 중...</p>
   <div class="upload-area">
     <span id="last-updated" style="font-size:11px;color:rgba(255,255,255,.45)"></span>
-    <label title="대시보드_데이터.csv 업로드">
+    <label title="CSV 업로드 (원본·가공 모두 가능)">
       📂 업데이트
       <input type="file" id="csv-input" accept=".csv" onchange="handleUpload(this)">
     </label>
+    <button class="upload-btn" onclick="doRollback()" title="직전 버전으로 복구">↩ 되돌리기</button>
     <span id="upload-status"></span>
   </div>
 </header>
@@ -156,7 +157,7 @@ header p{font-size:11px;color:rgba(255,255,255,.45)}
       <button class="btn" id="copy-btn" onclick="copyMetrics()">복사</button>
     </div>
     <textarea id="metrics-text" style="display:none"></textarea>
-    <pre id="metrics-area" style="font-family:'SF Mono',Menlo,monospace;font-size:11px;line-height:1.7;white-space:pre;overflow-x:auto;color:#1d1d1f;background:#f5f5f7;border-radius:10px;padding:14px;margin:0"></pre>
+    <div id="metrics-area" style="overflow-x:auto"></div>
   </div>
 </div>
 </div><!-- /main-content -->
@@ -394,9 +395,11 @@ function renderMetricsTable() {
   if (!md) return;
   const months = Object.keys(md).sort();
   const headers = ['구분', ...months.map(m => fmtM(m))];
+  // 마크다운 텍스트 (복사용)
   const lines = [];
   lines.push('| ' + headers.join(' | ') + ' |');
   lines.push('|' + '---|'.repeat(headers.length));
+  const rowData = [];
   for (const row of TABLE_ROWS) {
     const cells = [row.label];
     for (let i = 0; i < months.length; i++) {
@@ -405,10 +408,35 @@ function renderMetricsTable() {
       cells.push(row.type === 'pct' ? cellPct(cur, prev, row.lb) : cellCnt(cur, prev, row.lb));
     }
     lines.push('| ' + cells.join(' | ') + ' |');
+    rowData.push(cells);
   }
-  const text = lines.join('\n');
-  document.getElementById('metrics-area').textContent = text;
-  document.getElementById('metrics-text').value = text;
+  document.getElementById('metrics-text').value = lines.join('\n');
+  // HTML 테이블 렌더링
+  const area = document.getElementById('metrics-area');
+  const tbl = document.createElement('table');
+  tbl.style.cssText = 'border-collapse:collapse;width:100%;font-size:11px;line-height:1.6';
+  // 헤더
+  const thead = tbl.createTHead();
+  const hr = thead.insertRow();
+  headers.forEach(h => {
+    const th = document.createElement('th');
+    th.textContent = h;
+    th.style.cssText = 'padding:6px 10px;border:1px solid #e0e0e0;background:#f5f5f7;font-weight:600;white-space:nowrap;text-align:left';
+    hr.appendChild(th);
+  });
+  // 바디
+  const tbody = tbl.createTBody();
+  rowData.forEach(cells => {
+    const tr = tbody.insertRow();
+    cells.forEach((c, ci) => {
+      const td = document.createElement('td');
+      td.textContent = c;
+      td.style.cssText = `padding:5px 10px;border:1px solid #e0e0e0;white-space:nowrap;${ci===0?'font-weight:500;background:#fafafc':''}`;
+      tr.appendChild(td);
+    });
+  });
+  area.innerHTML = '';
+  area.appendChild(tbl);
 }
 function copyMetrics() {
   const text = document.getElementById('metrics-text').value;
@@ -417,6 +445,21 @@ function copyMetrics() {
     btn.textContent = '✓ 복사됨';
     setTimeout(() => { btn.textContent = '복사'; }, 2000);
   });
+}
+async function doRollback() {
+  const statusEl = document.getElementById('upload-status');
+  if (!confirm('직전 버전으로 되돌릴까요?')) return;
+  statusEl.textContent = '복구 중...';
+  try {
+    const res = await fetch('/api/rollback', {method:'POST'});
+    if (!res.ok) { const e=await res.json(); throw new Error(e.error||'실패'); }
+    statusEl.textContent = '✓ 복구 완료';
+    setTimeout(() => { statusEl.textContent=''; }, 3000);
+    const data = await fetch('/api/data?t='+Date.now());
+    applyData(processCSV(await data.text()));
+  } catch(e) {
+    statusEl.textContent = '실패: '+e.message;
+  }
 }
 
 /* ── 데이터 초기화 ── */
@@ -533,7 +576,9 @@ function sanitizeRaw(text) {
     row['내재화총'] = row.g + row.h + row.i;
     for (const [alias, col] of Object.entries(RATE_MAP)) {
       const v = r[col];
-      row[alias] = v ? (parseFloat(String(v).replace('%','').trim()) || null) : null;
+      const pv = (v !== undefined && v !== null && v !== '')
+        ? parseFloat(String(v).replace('%','').trim()) : NaN;
+      row[alias] = isNaN(pv) ? null : pv;
     }
     row['_updated'] = now;
     out.push(row);
