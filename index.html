@@ -369,22 +369,110 @@ async function loadData() {
   }
 }
 
+/* ── 원본 CSV → 익명화 변환 ── */
+function getISOWeek(d) {
+  const dt = new Date(d); dt.setHours(0,0,0,0);
+  dt.setDate(dt.getDate() + 3 - (dt.getDay()+6)%7);
+  const w1 = new Date(dt.getFullYear(),0,4);
+  const wn = 1+Math.round(((dt-w1)/86400000-3+(w1.getDay()+6)%7)/7);
+  return `${dt.getFullYear()}-W${String(wn).padStart(2,'0')}`;
+}
+function sanitizeRaw(text) {
+  const rows = Papa.parse(text, {header:true, skipEmptyLines:true}).data;
+  const now = new Date().toISOString().slice(0,16).replace('T',' ');
+  const RATE_MAP = {
+    r_kt:'컨택완료율 지표용(고지파트 지표용)',
+    r_l2:'로직2유도 계산용(고지파트 지표용)',
+    r_c :'컨택성공 신청유도 계산용(고지파트 지표용)',
+    r_d :'컨택성공 신청후 계산용(고지파트 지표용)',
+    r_e :'취소율 부재 종결 지표용(고지파트 지표용)',
+    r_f :'취소율 취소요청 지표용(고지파트 지표용)',
+    r_g :'내재접수기여율 신청유도 지표용(고지파트 지표용)',
+    r_h :'내재접수기여율 로직2 지표용(고지파트 지표용)',
+    r_i :'내재접수기여율 신청후 지표용(고지파트 지표용)',
+    r_gr:'내재접수기여율 지표용(고지파트 지표용)',
+    r_s :'실제성공 계산용(고지파트 지표용)',
+    r_z :'취소율 지표용(고지파트 지표용)',
+  };
+  const p2 = n => String(n).padStart(2,'0');
+  const fmtD = d => d ? `${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}` : '';
+  const out = [];
+  for (const r of rows) {
+    if (String(r['토스_8910_전수조사']).trim() === '1') continue;
+    const 배정일raw = r['체크리스트_담당자_배정일'];
+    if (!배정일raw) continue;
+    const 배정일 = new Date(배정일raw);
+    if (isNaN(배정일) || 배정일 < new Date('2025-12-01')) continue;
+    const 완료일raw = r['체크리스트_완료일'];
+    const 완료일 = 완료일raw ? new Date(완료일raw) : null;
+    const Y = r['new_Y로직'] || '';
+    const 담당자  = !!r['체크리스트_담당자'];
+    const sub    = !!r['submitted_date'];
+    const 최초   = r['체크리스트 최초 컨택'] || '';
+    const 유도   = r['체크리스트_유도 status'] || '';
+    const 검증   = r['체크리스트_검증 status'] || '';
+    const not대  = 유도 !== '대상아님';
+    const 체크완료 = r['신체크리스트_완료여부'] === 'checked';
+    const 체크빈칸 = !r['신체크리스트_완료여부'];
+    const 내1 = Y.includes('1주택단순비과세');
+    const 내2 = Y.includes('일시적2주택');
+    const 내3 = Y.includes('취득자산');
+    const 김경문   = r['실무_담당자'] === '김경문';
+    const 유도계   = 최초==='신청전' || 최초==='로직2' || !최초;
+    const 신청후계  = 최초==='검증콜' || 최초==='회계사검토중';
+    const 신청유도순 = 최초==='신청전' || !최초;
+    const pending  = r['pending_status'] || '';
+    const 종결cond = 유도==='종결' || 검증==='종결';
+    const case1 = 담당자 && not대 && 체크빈칸 && r['user_status_progress']==='환급불가-신청전';
+    const case2 = 담당자 && not대 && 체크완료 && (유도!=='종결' || 검증!=='종결');
+    const 성공  = case1 || case2;
+    const _m = `${배정일.getFullYear()}-${p2(배정일.getMonth()+1)}`;
+    const _q = `${배정일.getFullYear()}Q${Math.ceil((배정일.getMonth()+1)/3)}`;
+    const row = {
+      배정일: fmtD(배정일), 완료일: fmtD(완료일),
+      _m, _q, _w: getISOWeek(배정일),
+      a: (담당자 && !!완료일) ?1:0,
+      b: (담당자 && !완료일)  ?1:0,
+      c: (성공 && 유도계)     ?1:0,
+      d: (성공 && 신청후계)   ?1:0,
+      e: (종결cond && 담당자 && not대 && !pending) ?1:0,
+      f: (종결cond && 담당자 && not대 && pending==='신청취소') ?1:0,
+      g: (sub && 담당자 && (내1||내2||김경문) && 신청유도순) ?1:0,
+      h: (sub && 담당자 && (내3||(최초==='로직2'))) ?1:0,
+      i: (sub && 담당자 && (내1||내2||김경문) && 신청후계) ?1:0,
+      성공: 성공?1:0,
+    };
+    row['내재화총'] = row.g + row.h + row.i;
+    for (const [alias, col] of Object.entries(RATE_MAP)) {
+      const v = r[col];
+      row[alias] = v ? (parseFloat(String(v).replace('%','').trim()) || null) : null;
+    }
+    row['_updated'] = now;
+    out.push(row);
+  }
+  return Papa.unparse(out);
+}
+
 /* ── 업로드 처리 ── */
 async function doUpload(file) {
   if (!file) return;
   const statusEl = document.getElementById('upload-status');
-  statusEl.textContent = '업로드 중...';
+  statusEl.textContent = '처리 중...';
   try {
+    let text = await file.text();
+    // 원본 CSV(전체데이터) 감지 → 자동 익명화
+    const sample = Papa.parse(text, {header:true, skipEmptyLines:true, preview:1}).data;
+    if (sample.length && '체크리스트_담당자_배정일' in sample[0]) {
+      text = sanitizeRaw(text);
+    }
     const res = await fetch('/api/upload', {
       method: 'POST',
       headers: {'Content-Type': 'text/csv'},
-      body: file,
+      body: text,
     });
     if (!res.ok) throw new Error('서버 오류 ' + res.status);
     statusEl.textContent = '✓ 완료';
     setTimeout(() => { statusEl.textContent=''; }, 3000);
-    // 업로드 성공 후 데이터 재로드
-    const text = await file.text();
     applyData(processCSV(text));
   } catch(e) {
     statusEl.textContent = '실패: ' + e.message;
