@@ -571,9 +571,9 @@ function sanitizeRaw(text, fileLastModified) {
       f: (종결cond && 담당자 && not대 && pending==='신청취소') ?1:0,
       취소유도:   (종결cond && 담당자 && not대 && !['진행재개','환급불가'].includes(pending) && 유도계) ?1:0,
       취소신청후:  (종결cond && 담당자 && not대 && !['진행재개','환급불가'].includes(pending) && 신청후계) ?1:0,
-      실컨택성공:  (성공 && !!r['체크리스트_통화시간 (초)']) ?1:0,
-      실컨택유도:  (성공 && 유도계 && !!r['체크리스트_통화시간 (초)']) ?1:0,
-      실컨택신청후: (성공 && 신청후계 && !!r['체크리스트_통화시간 (초)']) ?1:0,
+      실컨택성공:  (성공 && 통화있음) ?1:0,
+      실컨택유도:  (성공 && 유도계 && 통화있음) ?1:0,
+      실컨택신청후: (성공 && 신청후계 && 통화있음) ?1:0,
       g: (sub && 담당자 && (내1||내2||김경문) && 신청유도순) ?1:0,
       h: (sub && 담당자 && (내3||(최초==='로직2'))) ?1:0,
       i: (sub && 담당자 && (내1||내2||김경문) && 신청후계) ?1:0,
@@ -583,8 +583,9 @@ function sanitizeRaw(text, fileLastModified) {
 
     // ── 율 지표 직접 계산 (에어테이블 포뮬라 기준) ──
     const progress        = !!r['progress'];
-    const 통화시간num      = parseFloat(r['체크리스트_통화시간 (초)']) || 0;
-    const 통화있음         = 통화시간num > 0;
+    const 통화초num        = parseFloat(r['체크리스트_통화시간 (초)']) || 0;
+    const 통화분num        = parseFloat(r['체크리스트_통화시간 (분)']) || 0;
+    const 통화있음         = 통화초num > 0 || 통화분num > 0;
     const 환급불가신청전   = r['user_status_progress'] === '환급불가-신청전';
     const 회계사검토중아님  = r['user_status_progress'] !== '회계사검토중';
     const 검증콜대상        = 유도 === '검증콜대상';
