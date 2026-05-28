@@ -558,6 +558,9 @@ function sanitizeRaw(text, fileLastModified) {
     const case1 = 담당자 && not대 && 체크빈칸 && r['user_status_progress']==='환급불가-신청전';
     const case2 = 담당자 && not대 && 체크완료 && 유도!=='종결' && 검증!=='종결';
     const 성공  = case1 || case2;
+    const 통화초num        = parseFloat(r['체크리스트_통화시간 (초)']) || 0;
+    const 통화분num        = parseFloat(r['체크리스트_통화시간 (분)']) || 0;
+    const 통화있음         = 통화초num > 0 || 통화분num > 0;
     const _m = `${배정일.getFullYear()}-${p2(배정일.getMonth()+1)}`;
     const _q = `${배정일.getFullYear()}Q${Math.ceil((배정일.getMonth()+1)/3)}`;
     const row = {
@@ -583,9 +586,6 @@ function sanitizeRaw(text, fileLastModified) {
 
     // ── 율 지표 직접 계산 (에어테이블 포뮬라 기준) ──
     const progress        = !!r['progress'];
-    const 통화초num        = parseFloat(r['체크리스트_통화시간 (초)']) || 0;
-    const 통화분num        = parseFloat(r['체크리스트_통화시간 (분)']) || 0;
-    const 통화있음         = 통화초num > 0 || 통화분num > 0;
     const 환급불가신청전   = r['user_status_progress'] === '환급불가-신청전';
     const 회계사검토중아님  = r['user_status_progress'] !== '회계사검토중';
     const 검증콜대상        = 유도 === '검증콜대상';
