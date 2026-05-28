@@ -171,8 +171,8 @@ header p{font-size:11px;color:rgba(255,255,255,.45)}
 
 <script>
 /* ── CSV 집계 로직 ── */
-const FLAGS = ['a','b','c','d','e','f','g','h','i','성공','기타','내재화총','취소유도','취소신청후'];
-const RATES = ['r_kt','r_l2','r_c','r_d','r_e','r_f','r_g','r_h','r_i','r_gr','r_s','r_z','r_zc','r_zd'];
+const FLAGS = ['a','b','c','d','e','f','g','h','i','성공','기타','내재화총','취소유도','취소신청후','실컨택성공','실컨택유도','실컨택신청후'];
+const RATES = ['r_kt','r_l2','r_c','r_d','r_e','r_f','r_g','r_h','r_i','r_gr','r_s','r_z','r_zc','r_zd','r_ss','r_ssc','r_ssd'];
 
 function aggGroup(rows) {
   const n = rows.length;
@@ -330,6 +330,10 @@ const SECS=[
   {title:'컨택 후 체크리스트 완료',rows:[
     [{pair:[{label:'성공건 (통합)',key:'성공',type:'cnt',hib:true},{label:'성공률 (통합)',key:'r_s',type:'rate',hib:true}],full:true}],
     [{pair:[{label:'• 신청유도 성공건',key:'c',type:'cnt',hib:true},{label:'• 신청유도 성공률',key:'r_c',type:'rate',hib:true}]},{pair:[{label:'• 신청후작성 성공건',key:'d',type:'cnt',hib:true},{label:'• 신청후작성 성공률',key:'r_d',type:'rate',hib:true}]}],
+  ]},
+  {title:'실컨택 체크리스트 완료',rows:[
+    [{pair:[{label:'실컨택 성공건 (통합)',key:'실컨택성공',type:'cnt',hib:true},{label:'실컨택 성공률 (통합)',key:'r_ss',type:'rate',hib:true}],full:true}],
+    [{pair:[{label:'• 신청 유도 실컨택 성공건',key:'실컨택유도',type:'cnt',hib:true},{label:'• 신청 유도 실컨택 성공률',key:'r_ssc',type:'rate',hib:true}]},{pair:[{label:'• 신청 후 작성 실컨택 성공건',key:'실컨택신청후',type:'cnt',hib:true},{label:'• 신청 후 작성 실컨택 성공률',key:'r_ssd',type:'rate',hib:true}]}],
   ]},
   {title:'취소',rows:[
     [{pair:[{label:'취소건 (통합)',key:'취소총',type:'cnt',hib:false},{label:'취소율 (통합)',key:'r_z',type:'rate',hib:false}],full:true}],
@@ -537,6 +541,7 @@ function sanitizeRaw(text, fileLastModified) {
     r_z :'취소율 지표용(고지파트 지표용)',
     r_zc:'취소율 신청유도 지표용(고지파트 지표용)',
     r_zd:'취소율 신청후 지표용(고지파트 지표용)',
+    r_ss:'실컨택성공 계산용(고지파트 지표용)',
   };
   const p2 = n => String(n).padStart(2,'0');
   const fmtD = d => d ? `${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}` : '';
@@ -581,8 +586,11 @@ function sanitizeRaw(text, fileLastModified) {
       d: (성공 && 신청후계)   ?1:0,
       e: (종결cond && 담당자 && not대 && !pending) ?1:0,
       f: (종결cond && 담당자 && not대 && pending==='신청취소') ?1:0,
-      취소유도:  (종결cond && 담당자 && not대 && !['진행재개','환급불가'].includes(pending) && 유도계) ?1:0,
-      취소신청후: (종결cond && 담당자 && not대 && !['진행재개','환급불가'].includes(pending) && 신청후계) ?1:0,
+      취소유도:   (종결cond && 담당자 && not대 && !['진행재개','환급불가'].includes(pending) && 유도계) ?1:0,
+      취소신청후:  (종결cond && 담당자 && not대 && !['진행재개','환급불가'].includes(pending) && 신청후계) ?1:0,
+      실컨택성공:  (성공 && !!r['체크리스트_통화시간 (초)']) ?1:0,
+      실컨택유도:  (성공 && 유도계 && !!r['체크리스트_통화시간 (초)']) ?1:0,
+      실컨택신청후: (성공 && 신청후계 && !!r['체크리스트_통화시간 (초)']) ?1:0,
       g: (sub && 담당자 && (내1||내2||김경문) && 신청유도순) ?1:0,
       h: (sub && 담당자 && (내3||(최초==='로직2'))) ?1:0,
       i: (sub && 담당자 && (내1||내2||김경문) && 신청후계) ?1:0,
@@ -596,6 +604,9 @@ function sanitizeRaw(text, fileLastModified) {
         ? parseFloat(String(v).replace('%','').trim()) : NaN;
       row[alias] = isNaN(pv) ? null : pv;
     }
+    // 신청유도/신청후작성 실컨택 성공률: 해당 행만 값 보존, 나머지 null → aggGroup 평균에서 자동 제외
+    row['r_ssc'] = 유도계   ? row['r_ss'] : null;
+    row['r_ssd'] = 신청후계 ? row['r_ss'] : null;
     row['_updated'] = now;
     out.push(row);
   }
