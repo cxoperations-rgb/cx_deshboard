@@ -508,9 +508,11 @@ function getISOWeek(d) {
   const wn = 1+Math.round(((dt-w1)/86400000-3+(w1.getDay()+6)%7)/7);
   return `${dt.getFullYear()}-W${String(wn).padStart(2,'0')}`;
 }
-function sanitizeRaw(text) {
+function sanitizeRaw(text, fileLastModified) {
   const rows = Papa.parse(text, {header:true, skipEmptyLines:true}).data;
-  const now = new Date().toISOString().slice(0,16).replace('T',' ');
+  const _d = new Date(fileLastModified || Date.now());
+  const _p = n => String(n).padStart(2,'0');
+  const now = `${_d.getFullYear()}-${_p(_d.getMonth()+1)}-${_p(_d.getDate())} ${_p(_d.getHours())}:${_p(_d.getMinutes())}`;
   const RATE_MAP = {
     r_kt:'컨택완료율 지표용(고지파트 지표용)',
     r_l2:'로직2유도 계산용(고지파트 지표용)',
@@ -596,7 +598,7 @@ async function doUpload(file) {
     // 원본 CSV(전체데이터) 감지 → 자동 익명화
     const sample = Papa.parse(text, {header:true, skipEmptyLines:true, preview:1}).data;
     if (sample.length && '체크리스트_담당자_배정일' in sample[0]) {
-      text = sanitizeRaw(text);
+      text = sanitizeRaw(text, file.lastModified);
     }
     const res = await fetch('/api/upload', {
       method: 'POST',
