@@ -510,10 +510,10 @@ function getISOWeek(d) {
 }
 function sanitizeRaw(text, fileLastModified) {
   const rows = Papa.parse(text, {header:true, skipEmptyLines:true}).data;
-  // 파일 수정일시 기준 로컬(KST) 시각 (없으면 현재)
-  const d = new Date(fileLastModified || Date.now());
-  const p2 = n => String(n).padStart(2,'0');
-  const now = `${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())} ${p2(d.getHours())}:${p2(d.getMinutes())}`;
+  // 파일 수정일시 기준 KST 시각 (없으면 현재 KST)
+  const ts = fileLastModified || Date.now();
+  const kst = new Date(ts + 9*60*60*1000);
+  const now = kst.toISOString().slice(0,16).replace('T',' ');
   const RATE_MAP = {
     r_kt:'컨택완료율 지표용(고지파트 지표용)',
     r_l2:'로직2유도 계산용(고지파트 지표용)',
