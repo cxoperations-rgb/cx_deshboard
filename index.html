@@ -476,7 +476,7 @@ function applyData(result) {
   document.getElementById('state-overlay').style.display = 'none';
   document.getElementById('main-content').style.display = '';
   document.getElementById('header-info').textContent =
-    `배정일 최종: ${result.refDate} · ${result.rows.toLocaleString()}건 · 토스 전수조사 제외`;
+    `${result.rows.toLocaleString()}건 · 토스 전수조사 제외 · 배정일 최종: ${result.refDate}`;
   if (result.updated) {
     document.getElementById('last-updated').textContent = `최종 업데이트: ${result.updated}`;
   }
