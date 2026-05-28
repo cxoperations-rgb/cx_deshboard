@@ -171,8 +171,8 @@ header p{font-size:11px;color:rgba(255,255,255,.45)}
 
 <script>
 /* ── CSV 집계 로직 ── */
-const FLAGS = ['a','b','c','d','e','f','g','h','i','성공','기타','내재화총'];
-const RATES = ['r_kt','r_l2','r_c','r_d','r_e','r_f','r_g','r_h','r_i','r_gr','r_s','r_z'];
+const FLAGS = ['a','b','c','d','e','f','g','h','i','성공','기타','내재화총','취소유도','취소신청후'];
+const RATES = ['r_kt','r_l2','r_c','r_d','r_e','r_f','r_g','r_h','r_i','r_gr','r_s','r_z','r_zc','r_zd'];
 
 function aggGroup(rows) {
   const n = rows.length;
@@ -325,7 +325,7 @@ const SECS=[
   {title:'컨택',rows:[[{label:'컨택 완료율',key:'r_kt',type:'rate',hib:true},{label:'로직2 유도 성공률',key:'r_l2',type:'rate',hib:true}]]},
   {title:'내재화 접수 기여',rows:[
     [{pair:[{label:'접수건 (통합)',key:'내재화총',type:'cnt',hib:true},{label:'접수 기여율 (통합)',key:'r_gr',type:'rate',hib:true}]},{pair:[{label:'• 로직2 접수건',key:'h',type:'cnt',hib:true},{label:'• 로직2 접수 기여율',key:'r_h',type:'rate',hib:true}]}],
-    [{pair:[{label:'• 신청유도 접수건',key:'g',type:'cnt',hib:true},{label:'• 신청유도 접수 기여율',key:'r_g',type:'rate',hib:true}]},{pair:[{label:'• 신청후작성 접수건',key:'i',type:'cnt',hib:true},{label:'• 신청후작성 접수 기여율',key:'r_i',type:'rate',hib:true}]}],
+    [{pair:[{label:'• 신청유도 접수건',key:'g',type:'cnt',hib:true},{label:'• 신청유도 접수 기여율',key:'r_g',type:'rate',hib:true}]},{pair:[{label:'• 신청 후 작성 접수건',key:'i',type:'cnt',hib:true},{label:'• 신청 후 작성 접수 기여율',key:'r_i',type:'rate',hib:true}]}],
   ]},
   {title:'컨택 후 체크리스트 완료',rows:[
     [{pair:[{label:'성공건 (통합)',key:'성공',type:'cnt',hib:true},{label:'성공률 (통합)',key:'r_s',type:'rate',hib:true}],full:true}],
@@ -333,7 +333,8 @@ const SECS=[
   ]},
   {title:'취소',rows:[
     [{pair:[{label:'취소건 (통합)',key:'취소총',type:'cnt',hib:false},{label:'취소율 (통합)',key:'r_z',type:'rate',hib:false}],full:true}],
-    [{pair:[{label:'• 부재 종결건',key:'e',type:'cnt',hib:false},{label:'• 부재 종결율',key:'r_e',type:'rate',hib:false}]},{pair:[{label:'• 신청 취소건',key:'f',type:'cnt',hib:false},{label:'• 신청 취소율',key:'r_f',type:'rate',hib:false}]}],
+    [{pair:[{label:'• 신청 유도 취소건',key:'취소유도',type:'cnt',hib:false},{label:'• 신청 유도 취소율',key:'r_zc',type:'rate',hib:false}]},{pair:[{label:'• 신청 후 작성 취소건',key:'취소신청후',type:'cnt',hib:false},{label:'• 신청 후 작성 취소율',key:'r_zd',type:'rate',hib:false}]}],
+    [{pair:[{label:'• 부재 종결건',key:'e',type:'cnt',hib:false},{label:'• 부재 종결율',key:'r_e',type:'rate',hib:false}]},{pair:[{label:'• 고객 요청 신청 취소건',key:'f',type:'cnt',hib:false},{label:'• 고객 요청 신청 취소율',key:'r_f',type:'rate',hib:false}]}],
   ]},
 ];
 function fmt(v,t){if(v==null)return '—';return t==='cnt'?v.toLocaleString()+'건':v.toFixed(1)+'%';}
@@ -534,6 +535,8 @@ function sanitizeRaw(text, fileLastModified) {
     r_gr:'내재접수기여율 지표용(고지파트 지표용)',
     r_s :'실제성공 계산용(고지파트 지표용)',
     r_z :'취소율 지표용(고지파트 지표용)',
+    r_zc:'취소율 신청유도 지표용(고지파트 지표용)',
+    r_zd:'취소율 신청후 지표용(고지파트 지표용)',
   };
   const p2 = n => String(n).padStart(2,'0');
   const fmtD = d => d ? `${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}` : '';
@@ -578,6 +581,8 @@ function sanitizeRaw(text, fileLastModified) {
       d: (성공 && 신청후계)   ?1:0,
       e: (종결cond && 담당자 && not대 && !pending) ?1:0,
       f: (종결cond && 담당자 && not대 && pending==='신청취소') ?1:0,
+      취소유도:  (종결cond && 담당자 && not대 && !['진행재개','환급불가'].includes(pending) && 유도계) ?1:0,
+      취소신청후: (종결cond && 담당자 && not대 && !['진행재개','환급불가'].includes(pending) && 신청후계) ?1:0,
       g: (sub && 담당자 && (내1||내2||김경문) && 신청유도순) ?1:0,
       h: (sub && 담당자 && (내3||(최초==='로직2'))) ?1:0,
       i: (sub && 담당자 && (내1||내2||김경문) && 신청후계) ?1:0,
