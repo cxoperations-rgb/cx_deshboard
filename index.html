@@ -341,7 +341,7 @@ const SECS=[
     [{pair:[{label:'• 부재 종결건',key:'e',type:'cnt',hib:false},{label:'• 부재 종결율',key:'r_e',type:'rate',hib:false}]},{pair:[{label:'• 고객 요청 신청 취소건',key:'f',type:'cnt',hib:false},{label:'• 고객 요청 신청 취소율',key:'r_f',type:'rate',hib:false}]}],
   ]},
 ];
-function fmt(v,t){if(v==null)return '—';return t==='cnt'?v.toLocaleString()+'건':v.toFixed(2)+'%';}
+function fmt(v,t){if(v==null)return '—';if(t!=='cnt')return v===100?'100%':v.toFixed(2)+'%';return v.toLocaleString()+'건';}
 function fmtDelta(cur,prv,type,hib,prevLbl){
   if(cur==null||prv==null)return '<span style="color:#c7c7cc">이전 기간 없음</span>';
   const diff=cur-prv;
