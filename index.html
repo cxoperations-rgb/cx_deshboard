@@ -171,7 +171,7 @@ header p{font-size:11px;color:rgba(255,255,255,.45)}
 
 <script>
 /* ── CSV 집계 로직 ── */
-const FLAGS = ['a','b','c','d','e','f','g','h','i','성공','기타','내재화총','취소총'];
+const FLAGS = ['a','b','c','d','e','f','g','h','i','성공','기타','내재화총'];
 const RATES = ['r_kt','r_l2','r_c','r_d','r_e','r_f','r_g','r_h','r_i','r_gr','r_s','r_z'];
 
 function aggGroup(rows) {
@@ -184,6 +184,7 @@ function aggGroup(rows) {
     r[rt] = vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : null;
   });
   r['ge'] = r['기타'];
+  r['취소총'] = r.e + r.f;
   return r;
 }
 
