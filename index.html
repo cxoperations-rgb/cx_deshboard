@@ -341,15 +341,15 @@ const SECS=[
     [{pair:[{label:'• 부재 종결건',key:'e',type:'cnt',hib:false},{label:'• 부재 종결율',key:'r_e',type:'rate',hib:false}]},{pair:[{label:'• 고객 요청 신청 취소건',key:'f',type:'cnt',hib:false},{label:'• 고객 요청 신청 취소율',key:'r_f',type:'rate',hib:false}]}],
   ]},
 ];
-function fmt(v,t){if(v==null)return '—';return t==='cnt'?v.toLocaleString()+'건':v.toFixed(1)+'%';}
+function fmt(v,t){if(v==null)return '—';return t==='cnt'?v.toLocaleString()+'건':v.toFixed(2)+'%';}
 function fmtDelta(cur,prv,type,hib,prevLbl){
   if(cur==null||prv==null)return '<span style="color:#c7c7cc">이전 기간 없음</span>';
   const diff=cur-prv;
-  if(Math.abs(diff)<(type==='rate'?.05:.5))return '<span style="color:#c7c7cc">—</span>';
+  if(Math.abs(diff)<(type==='rate'?.005:.5))return '<span style="color:#c7c7cc">—</span>';
   const arrow=diff>0?'↑':'↓';
   const good=hib==null?null:(hib?diff>0:diff<0);
   const col=good==null?'#8e8e93':(good?'#34c759':'#ff3b30');
-  const txt=type==='cnt'?`${arrow}${Math.abs(diff).toLocaleString()}건 (${Math.abs(diff/prv*100).toFixed(1)}%)`:`${arrow}${Math.abs(diff).toFixed(1)}%p`;
+  const txt=type==='cnt'?`${arrow}${Math.abs(diff).toLocaleString()}건 (${Math.abs(diff/prv*100).toFixed(1)}%)`:`${arrow}${Math.abs(diff).toFixed(2)}%p`;
   const vs=prevLbl?`<span style="color:#c7c7cc;font-size:10px"> vs ${prevLbl}</span>`:'';
   return `<span style="color:${col}">${txt}</span>${vs}`;
 }
