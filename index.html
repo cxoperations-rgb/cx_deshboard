@@ -556,7 +556,7 @@ function sanitizeRaw(text, fileLastModified) {
     const pending  = r['pending_status'] || '';
     const 종결cond = 유도==='종결' || 검증==='종결';
     const case1 = 담당자 && not대 && 체크빈칸 && r['user_status_progress']==='환급불가-신청전';
-    const case2 = 담당자 && not대 && 체크완료 && (유도!=='종결' || 검증!=='종결');
+    const case2 = 담당자 && not대 && 체크완료 && 유도!=='종결' && 검증!=='종결';
     const 성공  = case1 || case2;
     const _m = `${배정일.getFullYear()}-${p2(배정일.getMonth()+1)}`;
     const _q = `${배정일.getFullYear()}Q${Math.ceil((배정일.getMonth()+1)/3)}`;
