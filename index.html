@@ -597,13 +597,13 @@ function sanitizeRaw(text, fileLastModified) {
     const l2d = 내3 && 담당자 && not대 && 유도 !== '추가정보수취';
     row.r_l2 = l2d ? ((유도==='확인완료'||검증==='검증완료') ? 100 : 0) : null;
 
-    // r_c: 컨택성공 신청유도 — 분모: 담당자 AND not대 AND 최초=BLANK/신청전, 분자: 신체크=checked
-    const rcd = 담당자 && not대 && (!최초||최초==='신청전');
-    row.r_c = rcd ? (체크완료 ? 100 : 0) : null;
+    // r_c: 컨택성공 신청유도 — 분모: 담당자 AND not대 AND 최초=BLANK/신청전/로직2, 분자: 성공(case1|case2)
+    const rcd = 담당자 && not대 && (!최초||최초==='신청전'||최초==='로직2');
+    row.r_c = rcd ? (성공 ? 100 : 0) : null;
 
-    // r_d: 컨택성공 신청후작성 — 분모: 담당자 AND not대 AND 최초=검증콜/회계사검토중
+    // r_d: 컨택성공 신청후작성 — 분모: 담당자 AND not대 AND 최초=검증콜/회계사검토중, 분자: 성공(case1|case2)
     const rdd = 담당자 && not대 && (최초==='검증콜'||최초==='회계사검토중');
-    row.r_d = rdd ? (체크완료 ? 100 : 0) : null;
+    row.r_d = rdd ? (성공 ? 100 : 0) : null;
 
     // r_s: 컨택후성공률 — 분모: 담당자 AND not대, 분자: 성공(case1|case2)
     row.r_s = (담당자 && not대) ? (성공 ? 100 : 0) : null;
@@ -641,18 +641,11 @@ function sanitizeRaw(text, fileLastModified) {
     const rid = 담당자 && progress && 회계사검토중아님 && (최초==='검증콜'||최초==='회계사검토중') && (내1||내2);
     row.r_i = rid ? (sub ? 100 : 0) : null;
 
-    // r_ss: 실컨택성공률 — 분모: not대 AND (통화있음 OR 환급불가신청전)
-    // 분자: (not검증콜대상 AND not종결 AND 신체크=checked AND 통화있음)
-    //       OR (환급불가신청전 AND 통화없음)
-    //       OR (검증콜대상 AND 검증=검증완료/미진행접수/환급불가 AND 통화있음)
-    const rssd = not대 && (통화있음 || 환급불가신청전);
-    const rssn =
-      (not대 && !검증콜대상 && !종결cond && 체크완료 && 통화있음) ||
-      (not대 && 환급불가신청전 && !통화있음) ||
-      (검증콜대상 && (검증==='검증완료'||검증==='미진행접수'||검증==='환급불가') && 통화있음);
-    row.r_ss  = rssd           ? (rssn ? 100 : 0) : null;
-    row.r_ssc = (rssd && 유도계)   ? (rssn ? 100 : 0) : null;
-    row.r_ssd = (rssd && 신청후계) ? (rssn ? 100 : 0) : null;
+    // r_ss: 실컨택성공률 — 분모: 담당자 AND not대 AND 통화있음, 분자: 성공(case1|case2)
+    const rssd = 담당자 && not대 && 통화있음;
+    row.r_ss  = rssd                 ? (성공 ? 100 : 0) : null;
+    row.r_ssc = (rssd && 유도계)     ? (성공 ? 100 : 0) : null;
+    row.r_ssd = (rssd && 신청후계)   ? (성공 ? 100 : 0) : null;
     row['_updated'] = now;
     out.push(row);
   }
