@@ -641,11 +641,10 @@ function sanitizeRaw(text, fileLastModified) {
     const rid = 담당자 && progress && 회계사검토중아님 && (최초==='검증콜'||최초==='회계사검토중') && (내1||내2);
     row.r_i = rid ? (sub ? 100 : 0) : null;
 
-    // r_ss: 실컨택성공률 — 분모: 담당자 AND not대 AND 통화있음, 분자: 성공(case1|case2)
-    const rssd = 담당자 && not대 && 통화있음;
-    row.r_ss  = rssd                 ? (성공 ? 100 : 0) : null;
-    row.r_ssc = (rssd && 유도계)     ? (성공 ? 100 : 0) : null;
-    row.r_ssd = (rssd && 신청후계)   ? (성공 ? 100 : 0) : null;
+    // r_ss: 실컨택성공률 — 분모: 통화있음만, 분자: 성공(case1|case2)
+    row.r_ss  = 통화있음                ? (성공 ? 100 : 0) : null;
+    row.r_ssc = (통화있음 && 유도계)    ? (성공 ? 100 : 0) : null;
+    row.r_ssd = (통화있음 && 신청후계)  ? (성공 ? 100 : 0) : null;
     row['_updated'] = now;
     out.push(row);
   }
